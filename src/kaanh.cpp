@@ -304,7 +304,7 @@ namespace kaanh
 			Plan::NOT_CHECK_VEL_MIN |
 			Plan::NOT_CHECK_VEL_MAX |
 			Plan::NOT_CHECK_VEL_CONTINUOUS |
-			Plan::NOT_CHECK_VEL_CONTINUOUS_AT_START |
+            Plan::NOT_CHECK_VEL_CONTINUOUS_AT_START |
 			Plan::NOT_CHECK_VEL_FOLLOWING_ERROR;
 
 	}
@@ -521,7 +521,7 @@ namespace kaanh
 				{
 					cout << "actualPos" << ":" << controller->motionAtAbs(i).actualPos() << " ";
 					//cout << "actualVel" << ":" << controller->motionAtAbs(i).actualVel() << " ";
-					cout << "actualTor" << ":" << controller->motionAtAbs(i).actualTor() << " ";
+                    cout << "actualTor" << ":" << controller->motionAtAbs(i).actualTor() << " ";
                     cout<<param.amp_inc;
 				}
 			}
@@ -536,7 +536,7 @@ namespace kaanh
 			lout << controller->motionAtAbs(i).targetPos() << ",";
 			lout << controller->motionAtAbs(i).actualPos() << ",";
 			//lout << controller->motionAtAbs(i).actualVel() << ",";
-			lout << controller->motionAtAbs(i).actualTor() << ",";
+            lout << controller->motionAtAbs(i).actualTor() << ",";
 		}
 		lout << std::endl;
 
@@ -693,7 +693,7 @@ namespace kaanh
 
 		target.option |=
 			//				Plan::USE_TARGET_POS |
-			Plan::USE_VEL_OFFSET |
+            Plan::USE_VEL_OFFSET |
 #ifdef WIN32
 			Plan::NOT_CHECK_POS_MIN |
 			Plan::NOT_CHECK_POS_MAX |
@@ -706,7 +706,7 @@ namespace kaanh
 			Plan::NOT_CHECK_VEL_MIN |
 			Plan::NOT_CHECK_VEL_MAX |
 			Plan::NOT_CHECK_VEL_CONTINUOUS |
-			Plan::NOT_CHECK_VEL_CONTINUOUS_AT_START |
+            Plan::NOT_CHECK_VEL_CONTINUOUS_AT_START |
 			Plan::NOT_CHECK_VEL_FOLLOWING_ERROR;
 
 	}
@@ -1427,18 +1427,6 @@ namespace kaanh
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 	struct MoveJDParam
 	{
 		int Motion_dir;// { ShouAbd,ShouAdd,ShouFle,ShouEx,ElbFle,ElbEx	}
@@ -1603,7 +1591,7 @@ namespace kaanh
 			lout << controller->motionAtAbs(i).targetPos() << ",";
 			lout << controller->motionAtAbs(i).actualPos() << ",";
 			//   lout << controller->motionAtAbs(i).actualVel() << ",";
-			lout << controller->motionAtAbs(i).actualTor() << ",";
+            lout << controller->motionAtAbs(i).actualTor() << ",";
 		}
 		lout << std::endl;
 
@@ -1669,8 +1657,11 @@ namespace kaanh
 */
 		plan_root->planPool().add<kaanh::moveJ_Cos>();
 		plan_root->planPool().add<kaanh::MoveSine>();
+
 		plan_root->planPool().add<kaanh::Sensor>();
 		plan_root->planPool().add<kaanh::moveJ_T>();
+
+        plan_root->planPool().add<kaanh::MoveJD>();
 /*		plan_root->planPool().add<kaanh::moveJM_T>();
 		plan_root->planPool().add<kaanh::moveJM_TQ>();
 */

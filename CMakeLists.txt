@@ -19,6 +19,10 @@ message(${aris_DIR})
 
 # user program started...
 set(SOURCE_FILES src/main.cpp src/kaanh.cpp src/kaanh.h)
+if(UNIX)
+    set(SOURCE_FILES src/main.cpp src/kaanh.cpp src/kaanh.h src/socket_server_linux.cpp src/socket_server_linux.h)
+
+endif(UNIX)
 add_executable(kaanh ${SOURCE_FILES})
 if(UNIX)
 	target_link_libraries(kaanh ${aris_LIBRARIES} atomic)

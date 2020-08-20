@@ -1,4 +1,5 @@
-﻿#ifndef KAANH_H_
+﻿
+#ifndef KAANH_H_
 #define KAANH_H_
 
 #include <memory>
