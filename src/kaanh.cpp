@@ -23,17 +23,16 @@ namespace kaanh
 #ifdef UNIX
             double pos_offset[3]
             {
-                0,   0,   -0.1
+                0,   0,   0
 			};
 #endif
     //        double pos_factor[6]
     //		{//2^17=131072  17 位编码器 减速比81？
     //            131072.0 * 81 / 2 / PI, 131072.0 * 81 / 2 / PI, 131072.0 * 81 / 2 / PI, 131072.0 * 72.857 / 2 / PI, 131072.0 * 81 / 2 / PI, 131072.0 * 50 / 2 / PI
     //	};
-            double pos_factor[6]
+            double pos_factor[3]
             {
-                2048.0* 100 / 2 / PI, 2048.0* 100 / 2 / PI, 2048.0* 100 / 2 / PI, 131072.0 * 72.857 / 2 / PI, 131072.0 * 81 / 2 / PI, 131072.0 * 50 / 2 / PI
-        };
+                4*2048.0* 100 / 2 / PI, 4*2048.0* 100 / 2 / PI, 4*2048.0* 100 / 2 / PI  };//4倍频？ 比例对了
             double max_pos[6]
 			{
                 120.0 / 360 * 2 * PI, 135.0 / 360 * 2 * PI,	115.0 / 360 * 2 * PI, 170.0 / 360 * 2 * PI, 117.0 / 360 * 2 * PI, 360.0 / 360 * 2 * PI,
@@ -61,7 +60,7 @@ namespace kaanh
 				"		<SyncManager is_tx=\"false\"/>"
 				"		<SyncManager is_tx=\"true\"/>"
 				"		<SyncManager is_tx=\"false\">"
-                "			<Pdo index=\"0x1600\" is_tx=\"false\">"
+                "			<Pdo index=\"0x1605\" is_tx=\"false\">"
 				"				<PdoEntry name=\"control_word\" index=\"0x6040\" subindex=\"0x00\" size=\"16\"/>"
 				"				<PdoEntry name=\"mode_of_operation\" index=\"0x6060\" subindex=\"0x00\" size=\"8\"/>"
 				"				<PdoEntry name=\"target_pos\" index=\"0x607A\" subindex=\"0x00\" size=\"32\"/>"
@@ -71,7 +70,7 @@ namespace kaanh
 				"			</Pdo>"
 				"		</SyncManager>"
 				"		<SyncManager is_tx=\"true\">"
-                "			<Pdo index=\"0x1A00\" is_tx=\"true\">"
+                "			<Pdo index=\"0x1A04\" is_tx=\"true\">"
 				"				<PdoEntry name=\"status_word\" index=\"0x6041\" subindex=\"0x00\" size=\"16\"/>"
 				"				<PdoEntry name=\"mode_of_display\" index=\"0x6061\" subindex=\"0x00\" size=\"8\"/>"
 				"				<PdoEntry name=\"pos_actual_value\" index=\"0x6064\" subindex=\"0x00\" size=\"32\"/>"
