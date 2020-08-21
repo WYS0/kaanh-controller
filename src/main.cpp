@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <aris.hpp>
 #include "kaanh.h"
 #include<atomic>
@@ -38,17 +38,23 @@ int main(int argc, char *argv[])
 	//生成kaanh.xml文档
 
 	////-------for rokae robot begin//
-	//cs.resetController(kaanh::createControllerRokaeXB4().release());
-	//cs.resetModel(kaanh::createModelRokae().release());
-	//cs.resetPlanRoot(kaanh::createPlanRootRokaeXB4().release());
-	//cs.resetSensorRoot(new aris::sensor::SensorRoot);
- //   cs.saveXmlFile(xmlpath.string().c_str());
+/*
+    cs.resetController(kaanh::createControllerEXO().release());
+    cs.resetModel(kaanh::createModelRokae().release());
+    cs.resetPlanRoot(kaanh::createPlanRootRokaeXB4().release());
+    cs.resetSensorRoot(new aris::sensor::SensorRoot);
+    cs.saveXmlFile(xmlpath.string().c_str());
+*/
 	////-------for rokae robot end//
 
-
+//我注释的
     cs.loadXmlFile(xmlpath.string().c_str());
     cs.interfaceRoot().loadXmlFile(uixmlpath.string().c_str());
-    cs.saveXmlFile(xmlpath.string().c_str());
+    //cs.saveXmlFile(xmlpath.string().c_str());
+
+    //我加的
+    kaanh::createControllerEXO();
+
     cs.start();
 
 	//Start Web Socket//

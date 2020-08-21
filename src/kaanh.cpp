@@ -8,22 +8,22 @@ using namespace aris::plan;
 namespace kaanh
 {
     //configuring controller
-	auto createControllerRokaeXB4()->std::unique_ptr<aris::control::Controller>
+    auto createControllerEXO()->std::unique_ptr<aris::control::Controller>
 	{
 		std::unique_ptr<aris::control::Controller> controller(new aris::control::EthercatController);
 
         for (aris::Size i = 0; i < 3; ++i)//3 电机
 		{
 #ifdef WIN32
-            double pos_offset[6]
+            double pos_offset[3]
 			{
-                0,0,0,0,0,0
+                0,0,0
 			};
 #endif
 #ifdef UNIX
-            double pos_offset[6]
+            double pos_offset[3]
             {
-                0.00293480352126769,   -2.50023777179214,   -0.292382537944081,   0.0582675097338009,   1.53363576057128,   26.3545454214145
+                0,   0,   -0.1
 			};
 #endif
     //        double pos_factor[6]
@@ -40,7 +40,7 @@ namespace kaanh
 			};
             double min_pos[6]
 			{
-                0.0 / 360 * 2 * PI, -40.0 / 360 * 2 * PI, 0.0/ 360 * 2 * PI, -170.0 / 360 * 2 * PI, -117.0 / 360 * 2 * PI, -360.0 / 360 * 2 * PI
+                -10.0 / 360 * 2 * PI, -40.0 / 360 * 2 * PI, -10.0/ 360 * 2 * PI, -170.0 / 360 * 2 * PI, -117.0 / 360 * 2 * PI, -360.0 / 360 * 2 * PI
 			};
             double max_vel[6]
 			{
@@ -83,24 +83,25 @@ namespace kaanh
 				"</EthercatMotion>";
 
 
-			//第1个节点：外展电机
+            //第1个节点：外展电机//第2个节点：前屈电机//第3个节点：屈肘电机
             controller->slavePool().add<aris::control::EthercatMotion>().loadXmlStr(xml_str);
-			controller->slavePool().back().setPhyId(0);
+            controller->slavePool().back().setPhyId(i);
 
             dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).scanInfoForCurrentSlave();
             dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).scanPdoForCurrentSlave();
-            dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).setDcAssignActivate(0x00);
-			//第2个节点：前屈电机
-            controller->slavePool().back().setPhyId(1);
+            dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).setDcAssignActivate(0x300);
+
+        }
+         /*   controller->slavePool().back().setPhyId(1);
             dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).scanInfoForCurrentSlave();
             dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).scanPdoForCurrentSlave();
             dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).setDcAssignActivate(0x00);
-			//第3个节点：屈肘电机
+
             controller->slavePool().back().setPhyId(2);
             dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).scanInfoForCurrentSlave();
             dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).scanPdoForCurrentSlave();
             dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).setDcAssignActivate(0x00);
-
+         */
 			//添加第4个EtherCAT Node：采集设备基站
 			controller->slavePool().add<aris::control::EthercatSlave>();
             controller->slavePool().back().setPhyId(3);
@@ -135,7 +136,7 @@ namespace kaanh
 #ifndef WIN32
             //dynamic_cast<aris::control::EthercatMotion&>(controller->slavePool().back()).scanInfoForCurrentSlave();
 #endif
-	}
+
 		return controller;
 };
     //set DH parameters
@@ -873,8 +874,8 @@ namespace kaanh
 		ShowAllParam param;
 		param.axis_pos_vec.clear();
 		param.axis_pq_vec.clear();
-        param.axis_pos_vec.resize(6, 0.0);
-		param.axis_pq_vec.resize(7, 0.0);
+        param.axis_pos_vec.resize(3, 0.0);
+        param.axis_pq_vec.resize(4, 0.0);
 		target.param = param;
 
 		std::fill(target.mot_options.begin(), target.mot_options.end(),
@@ -897,13 +898,13 @@ namespace kaanh
 		// 打印 //
 		auto &cout = controller->mout();
 		cout << "current pq:" << std::endl;
-		for (Size i = 0; i < 7; i++)
+        for (Size i = 0; i < 3; i++)
 		{
 			cout << param.axis_pq_vec[i] << " ";
 		}
 		cout << std::endl;
 		cout << "current pos:" << std::endl;
-        for (Size i = 0; i < 6; i++)
+        for (Size i = 0; i < 3; i++)
 		{
 			cout << param.axis_pos_vec[i] << "  ";
 		}
@@ -911,7 +912,7 @@ namespace kaanh
 
 		// log //
 		auto &lout = controller->lout();
-        for (Size i = 0; i < 6; i++)
+        for (Size i = 0; i < 3; i++)
 		{
 			lout << param.axis_pos_vec[i] << " ";
 		}
@@ -976,21 +977,23 @@ namespace kaanh
 		//获取第一个count时，电机的当前角度位置//
 		if (target.count == 1)
 		{
-            for (Size i = 0; i < 1; ++i)//param.joint_active_vec.size() to 1
+            for (Size i = 0; i < 3; ++i)//param.joint_active_vec.size() to 1
 			{
 				if (param.joint_active_vec[i])
 				{
                     param.begin_pos = controller->motionAtAbs(i).actualPos();
+                    //setting elmo driver max. torque
+                    auto &ec_mot = static_cast<aris::control::EthercatMotion&>(controller->motionAtPhy(i));
+                    ec_mot.writePdo(0x6072, 0x00, std::int16_t(1000));
 				}
 			}
-            //setting elmo driver max. torque
-            auto &ec_mot = static_cast<aris::control::EthercatMotion&>(controller->motionAtPhy(0));
-            ec_mot.writePdo(0x6072, 0x00, std::int16_t(1000));
+
+
 		}
 
 		//梯形轨迹//
 		aris::Size total_count{ 1 };
-        for (Size i = 0; i < 1; ++i)//param.joint_active_vec.size() to 1
+        for (Size i = 0; i < 3; ++i)//param.joint_active_vec.size() to 1
 		{
 			if (param.joint_active_vec[i])
 			{
@@ -1016,7 +1019,7 @@ namespace kaanh
             //cout << "acc" << ":" << param.acc << " ";
             //cout << "dec"  << ":" << param.dec << " ";
 			
-            for (Size i = 0; i < 1; ++i)//param.joint_active_vec.size() to 1
+            for (Size i = 0; i < 3; ++i)//param.joint_active_vec.size() to 1
 			{
 				if (param.joint_active_vec[i])
 				{
@@ -1031,7 +1034,7 @@ namespace kaanh
 
 		// log //
 		auto &lout = controller->lout();
-        for (Size i = 0; i <1; i++)//param.joint_active_vec.size() to 1
+        for (Size i = 0; i <3; i++)//param.joint_active_vec.size() to 1
 		{
 			lout << controller->motionAtAbs(i).targetPos() << ",";
 			lout << controller->motionAtAbs(i).actualPos() << ",";

@@ -15,7 +15,7 @@ namespace kaanh
 	using Size = std::size_t;
 	constexpr double PI = 3.141592653589793;
 	
-	auto createControllerRokaeXB4()->std::unique_ptr<aris::control::Controller>;
+    auto createControllerEXO()->std::unique_ptr<aris::control::Controller>;
 	auto createModelRokae()->std::unique_ptr<aris::dynamic::Model>;
 	auto createPlanRootRokaeXB4()->std::unique_ptr<aris::plan::PlanRoot>;
 	
