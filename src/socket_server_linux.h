@@ -4,5 +4,5 @@
 void *serverfunction(void* args);
 
 
-int sockerserver();
+void sockerserver();
 

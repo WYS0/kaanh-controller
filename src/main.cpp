@@ -9,12 +9,13 @@
 
 #ifdef WIN32
        #include<winsock2.h>
+        #pragma comment(lib,"ws2_32.lib")
 #endif
 #ifdef UNIX
        #include"socket_server_linux.h"
 #endif
 
-#pragma comment(lib,"ws2_32.lib")
+
 void initialization();
 using namespace std;
 
@@ -38,13 +39,13 @@ int main(int argc, char *argv[])
 	//生成kaanh.xml文档
 
 	////-------for rokae robot begin//
-///*
+/*
     cs.resetController(kaanh::createControllerEXO().release());
     cs.resetModel(kaanh::createModelRokae().release());
     cs.resetPlanRoot(kaanh::createPlanRootRokaeXB4().release());
     cs.resetSensorRoot(new aris::sensor::SensorRoot);
     cs.saveXmlFile(xmlpath.string().c_str());
-//*/
+*/
 	////-------for rokae robot end//
 
 //我注释的
@@ -53,7 +54,7 @@ int main(int argc, char *argv[])
     //cs.saveXmlFile(xmlpath.string().c_str());
 
     //我加的
-    kaanh::createControllerEXO();
+    //kaanh::createControllerEXO();
 
     cs.start();
 
@@ -72,7 +73,7 @@ int main(int argc, char *argv[])
     #endif
 
     #ifdef UNIX
-    //sockerserver();
+    sockerserver();
     #endif
 	//system("en");
 
