@@ -62,17 +62,7 @@ namespace kaanh
 		explicit Sensor(const std::string &name = "Sensor_plan");
 		ARIS_REGISTER_TYPE(Sensor);
 	};
-	class runSingle : public aris::plan::Plan
-	{
-	public:
-		double tempData;
-		auto virtual prepairNrt(const std::map<std::string, std::string> &params, aris::plan::PlanTarget &target)->void;
-		auto virtual executeRT(aris::plan::PlanTarget &target)->int;
-		auto virtual collectNrt(aris::plan::PlanTarget &target)->void;
 
-		explicit runSingle(const std::string &name = "Sensor_plan");
-		ARIS_REGISTER_TYPE(runSingle);
-	};
 
 
 
@@ -111,6 +101,18 @@ namespace kaanh
 		explicit MoveJD(const std::string &name = "MoveJD_plan");
 		ARIS_REGISTER_TYPE(MoveJD);
 	};
+
+    class MoveAndAcquire : public aris::plan::Plan
+    {
+    public:
+        auto virtual prepairNrt(const std::map<std::string, std::string> &params, aris::plan::PlanTarget &target)->void;
+        auto virtual executeRT(aris::plan::PlanTarget &target)->int;
+        auto virtual collectNrt(aris::plan::PlanTarget &target)->void;
+
+        explicit MoveAndAcquire(const std::string &name = "MoveAndAcquire_plan");
+        ARIS_REGISTER_TYPE(MoveAndAcquire);
+    };
+
 	
 }
 

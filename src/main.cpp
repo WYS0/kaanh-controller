@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
 //我注释的
     cs.loadXmlFile(xmlpath.string().c_str());
-    cs.interfaceRoot().loadXmlFile(uixmlpath.string().c_str());
+    //cs.interfaceRoot().loadXmlFile(uixmlpath.string().c_str());
     //cs.saveXmlFile(xmlpath.string().c_str());
 
     //我加的
