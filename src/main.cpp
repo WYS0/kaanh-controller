@@ -39,13 +39,13 @@ int main(int argc, char *argv[])
 	//生成kaanh.xml文档
 
 	////-------for rokae robot begin//
-/*
+///*
     cs.resetController(kaanh::createControllerEXO().release());
     cs.resetModel(kaanh::createModelRokae().release());
     cs.resetPlanRoot(kaanh::createPlanRootRokaeXB4().release());
     cs.resetSensorRoot(new aris::sensor::SensorRoot);
     cs.saveXmlFile(xmlpath.string().c_str());
-*/
+//*/
 	////-------for rokae robot end//
 
 //我注释的

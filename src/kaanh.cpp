@@ -32,14 +32,14 @@ namespace kaanh
     //	};
             double pos_factor[6]
             {
-                4*2048.0* 100 / 2 / PI, 4*2048.0* 100 / 2 / PI, 4*2048.0* 100 / 2 / PI ,4*2048.0* 100 / 2 / PI, 4*2048.0* 100 / 2 / PI, 4*2048.0* 100 / 2 / PI  };//4倍频？ 比例对了
+                4*2048.0* 100 *4 / 2 / PI, 4*2048.0* 100 / 2 / PI, 4*2048.0* 100 / 2 / PI ,4*2048.0* 100 / 2 / PI, 4*2048.0* 100 / 2 / PI, 4*2048.0* 100 / 2 / PI  };//4倍频？ 比例对了
             double max_pos[6]
 			{
                 110.0 / 360 * 2 * PI, 130.0 / 360 * 2 * PI,	115.0 / 360 * 2 * PI, 17.0 / 360 * 2 * PI, 11.0 / 360 * 2 * PI, 36.0 / 360 * 2 * PI,
 			};
             double min_pos[6]
 			{
-                -10.0 / 30 * 2 * PI, -40.0 / 36 * 2 * PI, -5.0/ 36 * 2 * PI, -17.0 / 360 * 2 * PI, -11.0 / 360 * 2 * PI, -36.0 / 360 * 2 * PI
+                -0.0 / 30 * 2 * PI, -0.0 / 36 * 2 * PI, -0.0/ 36 * 2 * PI, -17.0 / 360 * 2 * PI, -11.0 / 360 * 2 * PI, -36.0 / 360 * 2 * PI
 			};
             double max_vel[6]
 			{
@@ -1569,6 +1569,163 @@ namespace kaanh
 
 
 
+                struct MoveJ3Param
+                {
+                    std::vector<double> joint_vel, joint_acc, joint_dec, joint_pos, begin_pos;//绝对的角度值。 其他为0-1最大值的百分比
+                    std::vector<Size> total_count;
+                };
+                auto MoveJ3::prepairNrt(const std::map<std::string, std::string> &params, PlanTarget &target)->void
+                {
+                    MoveJ3Param mvj_param;
+
+                    mvj_param.joint_pos.resize(3, 0.0);
+                    mvj_param.begin_pos.resize(3, 0.0);
+                    mvj_param.total_count.resize(3, 0);
+
+                    // find joint acc/vel/dec/pos
+                    for (auto cmd_param : params)
+                    {
+                        auto c = target.controller;
+                        double max_pos[3]
+                        {
+                            110.0 / 360 * 2 * PI, 130.0 / 360 * 2 * PI,	115.0 / 360 * 2 * PI,                         };
+                        double min_pos[3]
+                        {
+                            -5.0 / 360 * 2 * PI, -30.0 / 360 * 2 * PI,	0.0 / 360 * 2 * PI,                         };
+
+                        if (cmd_param.first == "joint_acc")
+                        {
+                            mvj_param.joint_acc.clear();
+                            mvj_param.joint_acc.resize(3, 0.0);
+
+                            auto acc_mat = target.model->calculator().calculateExpression(cmd_param.second);
+                            if (acc_mat.size() == 1)std::fill(mvj_param.joint_acc.begin(), mvj_param.joint_acc.end(), acc_mat.toDouble());
+                            else if (acc_mat.size() == 3) std::copy(acc_mat.begin(), acc_mat.end(), mvj_param.joint_acc.begin());
+                            else THROW_FILE_AND_LINE("");
+
+                            for (int i = 0; i < 3; ++i) mvj_param.joint_acc[i] *= target.controller->motionPool()[i].maxAcc();
+
+                            // check value validity //
+                            for (Size i = 0; i< 3; ++i)
+                                if (mvj_param.joint_acc[i] <= 0 || mvj_param.joint_acc[i] > c->motionPool()[i].maxAcc())
+                                    THROW_FILE_AND_LINE("");
+                        }
+                        else if (cmd_param.first == "joint_vel")
+                        {
+                            mvj_param.joint_vel.clear();
+                            mvj_param.joint_vel.resize(3, 0.0);
+
+                            auto vel_mat = target.model->calculator().calculateExpression(cmd_param.second);
+                            if (vel_mat.size() == 1)std::fill(mvj_param.joint_vel.begin(), mvj_param.joint_vel.end(), vel_mat.toDouble());
+                            else if (vel_mat.size() == 3) std::copy(vel_mat.begin(), vel_mat.end(), mvj_param.joint_vel.begin());
+                            else THROW_FILE_AND_LINE("");
+
+                            for (int i = 0; i < 3; ++i)mvj_param.joint_vel[i] *= target.controller->motionPool()[i].maxVel();
+
+                            // check value validity //
+                            for (Size i = 0; i< 3; ++i)
+                                if (mvj_param.joint_vel[i] <= 0 || mvj_param.joint_vel[i] > c->motionPool()[i].maxVel())
+                                    THROW_FILE_AND_LINE("");
+                        }
+                        else if (cmd_param.first == "joint_dec")
+                        {
+                            mvj_param.joint_dec.clear();
+                            mvj_param.joint_dec.resize(3, 0.0);
+
+                            auto dec_mat = target.model->calculator().calculateExpression(cmd_param.second);
+                            if (dec_mat.size() == 1)std::fill(mvj_param.joint_dec.begin(), mvj_param.joint_dec.end(), dec_mat.toDouble());
+                            else if (dec_mat.size() == 3) std::copy(dec_mat.begin(), dec_mat.end(), mvj_param.joint_dec.begin());
+                            else THROW_FILE_AND_LINE("");
+
+                            for (int i = 0; i < 3; ++i) mvj_param.joint_dec[i] *= target.controller->motionPool()[i].maxAcc();
+
+                            // check value validity //
+                            for (Size i = 0; i< 3; ++i)
+                                if (mvj_param.joint_dec[i] <= 0 || mvj_param.joint_dec[i] > c->motionPool()[i].maxAcc())
+                                    THROW_FILE_AND_LINE("");
+                        }
+                        else if (cmd_param.first == "joint_pos")
+                        {
+                            mvj_param.joint_pos.clear();
+                            mvj_param.joint_pos.resize(target.model->motionPool().size(), 0.0);
+
+                            auto pos_mat = target.model->calculator().calculateExpression(cmd_param.second);
+                            if (pos_mat.size() == 1)std::fill(mvj_param.joint_pos.begin(), mvj_param.joint_pos.end(), pos_mat.toDouble());
+                            else if (pos_mat.size() == 3) std::copy(pos_mat.begin(), pos_mat.end(), mvj_param.joint_pos.begin());
+                            else THROW_FILE_AND_LINE("");
+
+                            for (int i = 0; i < 3; ++i) mvj_param.joint_pos[i] *= PI / 180.0;//angle_to_rad
+
+                            //肘关节联动
+                            mvj_param.joint_pos[2] += mvj_param.joint_pos[1];
+                            // check value validity //
+                            for (Size i = 0; i< 3; ++i)
+                                if (mvj_param.joint_pos[i] <= min_pos[i] || mvj_param.joint_pos[i] > max_pos[i])
+                                    THROW_FILE_AND_LINE("");
+                        }
+                    }
+
+                    target.param = mvj_param;
+
+                    std::vector<std::pair<std::string, std::any>> ret_value;
+                    target.ret = ret_value;
+                }
+                auto MoveJ3::executeRT(PlanTarget &target)->int
+                {
+                    auto mvj_param = std::any_cast<MoveJ3Param>(&target.param);
+                    auto controller = target.controller;
+
+                    // 取得起始位置 //
+                    double p, v, a;
+                    static Size max_total_count;
+                    if (target.count == 1)
+                    {
+                        // init begin_pos //
+                        for (Size i = 0; i < 3; ++i)//param.joint_active_vec.size() to 1
+                        {
+                                mvj_param->begin_pos[i] = controller->motionAtAbs(i).actualPos();
+                                //setting elmo driver max. torque
+                                auto &ec_mot = static_cast<aris::control::EthercatMotion&>(controller->motionAtPhy(i));
+                                ec_mot.writePdo(0x6072, 0x00, std::int16_t(1000));
+                                //得到总count
+                                aris::plan::moveAbsolute(target.count, mvj_param->begin_pos[i], mvj_param->joint_pos[i]
+                                  , mvj_param->joint_vel[i] / 1000, mvj_param->joint_acc[i] / 1000 / 1000, mvj_param->joint_dec[i] / 1000 / 1000
+                                  , p, v, a, mvj_param->total_count[i]);
+                        }
+                             max_total_count = *std::max_element(mvj_param->total_count.begin(), mvj_param->total_count.end());
+                    }
+
+                    for (Size i = 0; i < 3 ; ++i)
+                    {
+                    double p, v, a;
+
+                    aris::plan::moveAbsolute(static_cast<double>(target.count) * mvj_param->total_count[i] / max_total_count,
+                        mvj_param->begin_pos[i], mvj_param->joint_pos[i],
+                        mvj_param->joint_vel[i] / 1000, mvj_param->joint_acc[i] / 1000 / 1000, mvj_param->joint_dec[i] / 1000 / 1000,
+                        p, v, a, mvj_param->total_count[i]);//规划位置  修改P。   第一个参数是规划的当前点  最后一个是计算出到总count
+                    controller->motionAtAbs(i).setTargetPos(p);  //和setMP 有点区别   //电机就动了
+                    //target.model->motionPool().at(i).setMp(p);  //模型
+                    }
+
+
+                    return max_total_count == 0 ? 0 : max_total_count - target.count;
+                }
+                auto MoveJ3::collectNrt(PlanTarget &target)->void {}
+                MoveJ3::MoveJ3(const std::string &name) :Plan(name)
+                {
+                    command().loadXmlStr(
+                        "<Command name=\"movej3\">"
+                        "	<GroupParam>"
+                        "		<Param name=\"joint_pos\" abbreviation=\"p\" default=\"{0,0,0}\"/>"
+                        "		<Param name=\"joint_acc\" abbreviation=\"a\" default=\"0.5\"/>"
+                        "		<Param name=\"joint_vel\" abbreviation=\"v\" default=\"0.5\"/>"
+                        "		<Param name=\"joint_dec\" abbreviation=\"d\" default=\"0.5\"/>"
+                        "	</GroupParam>"
+                        "</Command>");
+                }
+
+
+
 
 
 
@@ -1603,9 +1760,9 @@ namespace kaanh
 		plan_root->planPool().add<kaanh::moveJ_Cos>();
 		plan_root->planPool().add<kaanh::MoveSine>();
         plan_root->planPool().add<kaanh::MoveAndAcquire>();
-
+        plan_root->planPool().add<kaanh::MoveJ3>();
 		plan_root->planPool().add<kaanh::Sensor>();
-		plan_root->planPool().add<kaanh::moveJ_T>();
+        plan_root->planPool().add<kaanh::moveJ_T>();
         plan_root->planPool().add<kaanh::MoveJD>();
 
 		return plan_root;

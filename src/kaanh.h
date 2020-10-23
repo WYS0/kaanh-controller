@@ -113,7 +113,17 @@ namespace kaanh
         ARIS_REGISTER_TYPE(MoveAndAcquire);
     };
 
-	
+    class MoveJ3 : public aris::plan::Plan
+    {
+    public:
+        auto virtual prepairNrt(const std::map<std::string, std::string> &params, aris::plan::PlanTarget &target)->void;
+        auto virtual executeRT(aris::plan::PlanTarget &target)->int;
+        auto virtual collectNrt(aris::plan::PlanTarget &target)->void;
+
+        explicit MoveJ3(const std::string &name = "MoveJ3_plan");
+        ARIS_REGISTER_TYPE(MoveJ3);
+    };
+
 }
 
 #endif
