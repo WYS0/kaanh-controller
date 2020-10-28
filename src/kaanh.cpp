@@ -39,7 +39,7 @@ namespace kaanh
 			};
             double min_pos[6]
 			{
-                -0.0 / 30 * 2 * PI, -0.0 / 36 * 2 * PI, -0.0/ 36 * 2 * PI, -17.0 / 360 * 2 * PI, -11.0 / 360 * 2 * PI, -36.0 / 360 * 2 * PI
+                -0.0 / 30 * 2 * PI, -5.0 / 36 * 2 * PI, -5.0/ 36 * 2 * PI, -17.0 / 360 * 2 * PI, -11.0 / 360 * 2 * PI, -36.0 / 360 * 2 * PI
 			};
             double max_vel[6]
 			{
@@ -51,32 +51,32 @@ namespace kaanh
 			};
 
 			std::string xml_str =
-				"<EthercatMotion phy_id=\"" + std::to_string(i) + "\" product_code=\"0x00\""
-				" vendor_id=\"0x00\" revision_num=\"0x00\" dc_assign_activate=\"0x0300\""
+                "<EthercatMotion phy_id=\"" + std::to_string(i) + "\" product_code=\"0x00030924\""
+                " vendor_id=\"0x0000009a\" revision_num=\"0x00010420\" dc_assign_activate=\"0x0300\""
 				" min_pos=\"" + std::to_string(min_pos[i]) + "\" max_pos=\"" + std::to_string(max_pos[i]) + "\" max_vel=\"" + std::to_string(max_vel[i]) + "\" min_vel=\"" + std::to_string(-max_vel[i]) + "\""
 				" max_acc=\"" + std::to_string(max_acc[i]) + "\" min_acc=\"" + std::to_string(-max_acc[i]) + "\" max_pos_following_error=\"0.1\" max_vel_following_error=\"0.5\""
 				" home_pos=\"0\" pos_factor=\"" + std::to_string(pos_factor[i]) + "\" pos_offset=\"" + std::to_string(pos_offset[i]) + "\">"
-				"	<SyncManagerPoolObject>"
-				"		<SyncManager is_tx=\"false\"/>"
-				"		<SyncManager is_tx=\"true\"/>"
-				"		<SyncManager is_tx=\"false\">"
-                "			<Pdo index=\"0x1605\" is_tx=\"false\">"
-				"				<PdoEntry name=\"control_word\" index=\"0x6040\" subindex=\"0x00\" size=\"16\"/>"
-				"				<PdoEntry name=\"mode_of_operation\" index=\"0x6060\" subindex=\"0x00\" size=\"8\"/>"
-				"				<PdoEntry name=\"target_pos\" index=\"0x607A\" subindex=\"0x00\" size=\"32\"/>"
-				"				<PdoEntry name=\"target_vel\" index=\"0x60FF\" subindex=\"0x00\" size=\"32\"/>"
-				"				<PdoEntry name=\"targer_tor\" index=\"0x6071\" subindex=\"0x00\" size=\"16\"/>"
-				"				<PdoEntry name=\"offset_vel\" index=\"0x60B1\" subindex=\"0x00\" size=\"32\"/>"
+                "	<SyncManagerPoolObject name=\"sm_pool\">"
+                "		<SyncManager name=\"sm\" is_tx=\"false\"/>"
+                "		<SyncManager name=\"sm\" is_tx=\"true\"/>"
+                "		<SyncManager name=\"sm\" is_tx=\"false\">"
+                "			<Pdo name=\"pdo\" index=\"0x1605\">"
+                "               <PdoEntry name=\"Target Position\" index=\"0x607a\" subindex=\"0x00\" size=\"32\"/>"
+                "				<PdoEntry name=\"Target Velocity\" index=\"0x60ff\" subindex=\"0x00\" size=\"32\"/>"
+                "				<PdoEntry name=\"Target Torque\" index=\"0x6071\" subindex=\"0x00\" size=\"16\"/>"
+                "				<PdoEntry name=\"Max. Torque\" index=\"0x6072\" subindex=\"0x00\" size=\"16\"/>"
+                "				<PdoEntry name=\"Control word\" index=\"0x6040\" subindex=\"0x00\" size=\"16\"/>"
+                "				<PdoEntry name=\"Mode of operation\" index=\"0x6060\" subindex=\"0x00\" size=\"8\"/>"
 				"			</Pdo>"
 				"		</SyncManager>"
-				"		<SyncManager is_tx=\"true\">"
-                "			<Pdo index=\"0x1A04\" is_tx=\"true\">"
-				"				<PdoEntry name=\"status_word\" index=\"0x6041\" subindex=\"0x00\" size=\"16\"/>"
-				"				<PdoEntry name=\"mode_of_display\" index=\"0x6061\" subindex=\"0x00\" size=\"8\"/>"
-				"				<PdoEntry name=\"pos_actual_value\" index=\"0x6064\" subindex=\"0x00\" size=\"32\"/>"
-				"				<PdoEntry name=\"vel_actual_value\" index=\"0x606c\" subindex=\"0x00\" size=\"32\"/>"
-				"				<PdoEntry name=\"cur_actual_value\" index=\"0x6078\" subindex=\"0x00\" size=\"16\"/>"
-				"			</Pdo>"
+                "		<SyncManager name=\"sm\" is_tx=\"true\">"
+                "			<Pdo name=\"pdo\" index=\"0x1a04\">"
+                "				<PdoEntry name=\"Position actual value\" index=\"0x6064\" subindex=\"0x00\" size=\"32\"/>"
+                "				<PdoEntry name=\"Position Following error actual value\" index=\"0x60f4\" subindex=\"0x00\" size=\"32\"/>"
+                "				<PdoEntry name=\"Torque actual value\" index=\"0x6077\" subindex=\"0x00\" size=\"16\"/>"
+                "				<PdoEntry name=\"Status word\" index=\"0x6041\" subindex=\"0x00\" size=\"16\"/>"
+                "				<PdoEntry name=\"Mode of operation display\" index=\"0x6061\" subindex=\"0x00\" size=\"8\"/>"
+                "			</Pdo>"
 				"		</SyncManager>"
                 "	</SyncManagerPoolObject>"
 				"</EthercatMotion>";
@@ -84,11 +84,11 @@ namespace kaanh
 
             //第1个节点：外展电机//第2个节点：前屈电机//第3个节点：屈肘电机
             controller->slavePool().add<aris::control::EthercatMotion>().loadXmlStr(xml_str);
-            controller->slavePool().back().setPhyId(i);
-
-            dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).scanInfoForCurrentSlave();
-            dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).scanPdoForCurrentSlave();
-            dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).setDcAssignActivate(0x300);
+            controller->slavePool().back().setPhyId((std::uint16_t&)i);
+//我注释到
+            //dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).scanInfoForCurrentSlave();
+            //dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).scanPdoForCurrentSlave();
+            //dynamic_cast<aris::control::EthercatSlave&>(controller->slavePool().back()).setDcAssignActivate(0x300);
 
         }
 
@@ -142,7 +142,7 @@ namespace kaanh
 
         param.tool0_pe[2] = 0.078;
 
-		auto model = aris::dynamic::createModelPuma(param);
+        auto model = aris::dynamic::createModelPuma(param);
 		/*
 		//根据tool0，添加一个tool1，tool1相对于tool0在x方向加上0.1m//
 		auto &tool0 = model->partPool().back().markerPool().findByName("general_motion_0_i");//获取tool0
@@ -1455,8 +1455,6 @@ namespace kaanh
                     auto &param = std::any_cast<MoveAndAcquireParam&>(target.param);
                     // 访问主站 //
                     auto controller = dynamic_cast<aris::control::EthercatController*>(target.controller);
-
-
                     //获取第一个count时，电机的当前角度位置//
                     if (target.count == 1)
                     {
@@ -1470,13 +1468,9 @@ namespace kaanh
                                 ec_mot.writePdo(0x6072, 0x00, std::int16_t(1000));
                             }
                         }
-
-
                     }
-
                     //梯形轨迹//
                     aris::Size total_count{ 1 };
-
                     for (Size i = 0; i < 3; ++i)//param.joint_active_vec.size() to 1
                     {
                         if (param.joint_active_vec[i])
@@ -1520,13 +1514,11 @@ namespace kaanh
                         //cout << "dec"  << ":" << param.dec << " ";
                         for (Size i = 0; i < 3; ++i)//param.joint_active_vec.size() to 1
                         {
-                            if (param.joint_active_vec[i])
-                            {
+
                                 cout << "targetPos" << ":" << controller->motionAtPhy(i).targetPos() << " ";
                                 //cout << "actualVel" << ":" << controller->motionAtAbs(i).actualVel() << " ";
                                 cout << "actualPos" << ":" << controller->motionAtPhy(i).actualPos() << " ";
-                                cout << "TorqueData" << ":" << std::setw(6) << param.channel[0][i] << "  ";
-                            }
+
                         }
                         cout << std::endl;
                         //cout << "----------------------------------------------------" << std::endl;
@@ -1573,25 +1565,31 @@ namespace kaanh
                 {
                     std::vector<double> joint_vel, joint_acc, joint_dec, joint_pos, begin_pos;//绝对的角度值。 其他为0-1最大值的百分比
                     std::vector<Size> total_count;
+
+                    std::vector<bool> joint_active_vec;
+                    std::vector<std::vector<double>> channel;
+
                 };
                 auto MoveJ3::prepairNrt(const std::map<std::string, std::string> &params, PlanTarget &target)->void
                 {
                     MoveJ3Param mvj_param;
 
-                    mvj_param.joint_pos.resize(3, 0.0);
+                    mvj_param.begin_pos.clear();
                     mvj_param.begin_pos.resize(3, 0.0);
                     mvj_param.total_count.resize(3, 0);
+                    mvj_param.joint_active_vec.clear();
+                    mvj_param.joint_active_vec.resize(target.model->motionPool().size(), false);
+                    for (Size i = 0; i <= 3; i++)
+                    {
+                       mvj_param.joint_active_vec.at(i) = true;
+                    }
 
                     // find joint acc/vel/dec/pos
                     for (auto cmd_param : params)
                     {
                         auto c = target.controller;
-                        double max_pos[3]
-                        {
-                            110.0 / 360 * 2 * PI, 130.0 / 360 * 2 * PI,	115.0 / 360 * 2 * PI,                         };
-                        double min_pos[3]
-                        {
-                            -5.0 / 360 * 2 * PI, -30.0 / 360 * 2 * PI,	0.0 / 360 * 2 * PI,                         };
+                        double max_pos[3]   {    100.0 / 360 * 2 * PI, 100.0 / 360 * 2 * PI,	100.0 / 360 * 2 * PI             };
+                        double min_pos[3]   {     -5.0 / 360 * 2 * PI, -5.0 / 360 * 2 * PI,	-5.0 / 360 * 2 * PI             };
 
                         if (cmd_param.first == "joint_acc")
                         {
@@ -1647,8 +1645,7 @@ namespace kaanh
                         else if (cmd_param.first == "joint_pos")
                         {
                             mvj_param.joint_pos.clear();
-                            mvj_param.joint_pos.resize(target.model->motionPool().size(), 0.0);
-
+                            mvj_param.joint_pos.resize(3, 0.0);
                             auto pos_mat = target.model->calculator().calculateExpression(cmd_param.second);
                             if (pos_mat.size() == 1)std::fill(mvj_param.joint_pos.begin(), mvj_param.joint_pos.end(), pos_mat.toDouble());
                             else if (pos_mat.size() == 3) std::copy(pos_mat.begin(), pos_mat.end(), mvj_param.joint_pos.begin());
@@ -1664,16 +1661,24 @@ namespace kaanh
                                     THROW_FILE_AND_LINE("");
                         }
                     }
+                    mvj_param.channel.clear();//记得清除
+                    std::vector<double> init = { 0,0,0 ,0 };
+                    //初始化channel,完成后每个板卡都是init
+                    for (Size i = 0; i <= 4; i++)
+                    {
+                        mvj_param.channel.push_back(init);
+                    }
+
 
                     target.param = mvj_param;
-
-                    std::vector<std::pair<std::string, std::any>> ret_value;
-                    target.ret = ret_value;
+//原来没注释
+                    //std::vector<std::pair<std::string, std::any>> ret_value;
+                    //target.ret = ret_value;
                 }
                 auto MoveJ3::executeRT(PlanTarget &target)->int
                 {
-                    auto mvj_param = std::any_cast<MoveJ3Param>(&target.param);
-                    auto controller = target.controller;
+                    auto &mvj_param = std::any_cast<MoveJ3Param&>(target.param);
+                    auto controller = dynamic_cast<aris::control::EthercatController*>(target.controller);
 
                     // 取得起始位置 //
                     double p, v, a;
@@ -1683,30 +1688,90 @@ namespace kaanh
                         // init begin_pos //
                         for (Size i = 0; i < 3; ++i)//param.joint_active_vec.size() to 1
                         {
-                                mvj_param->begin_pos[i] = controller->motionAtAbs(i).actualPos();
+                                mvj_param.begin_pos[i] = controller->motionAtAbs(i).actualPos();
                                 //setting elmo driver max. torque
                                 auto &ec_mot = static_cast<aris::control::EthercatMotion&>(controller->motionAtPhy(i));
                                 ec_mot.writePdo(0x6072, 0x00, std::int16_t(1000));
                                 //得到总count
-                                aris::plan::moveAbsolute(target.count, mvj_param->begin_pos[i], mvj_param->joint_pos[i]
-                                  , mvj_param->joint_vel[i] / 1000, mvj_param->joint_acc[i] / 1000 / 1000, mvj_param->joint_dec[i] / 1000 / 1000
-                                  , p, v, a, mvj_param->total_count[i]);
+                                aris::plan::moveAbsolute(target.count, mvj_param.begin_pos[i], mvj_param.joint_pos[i]
+                                  , mvj_param.joint_vel[i] / 1000, mvj_param.joint_acc[i] / 1000 / 1000, mvj_param.joint_dec[i] / 1000 / 1000
+                                  , p, v, a, mvj_param.total_count[i]);
                         }
-                             max_total_count = *std::max_element(mvj_param->total_count.begin(), mvj_param->total_count.end());
+                             max_total_count = *std::max_element(mvj_param.total_count.begin(), mvj_param.total_count.end());
                     }
 
                     for (Size i = 0; i < 3 ; ++i)
                     {
                     double p, v, a;
 
-                    aris::plan::moveAbsolute(static_cast<double>(target.count) * mvj_param->total_count[i] / max_total_count,
-                        mvj_param->begin_pos[i], mvj_param->joint_pos[i],
-                        mvj_param->joint_vel[i] / 1000, mvj_param->joint_acc[i] / 1000 / 1000, mvj_param->joint_dec[i] / 1000 / 1000,
-                        p, v, a, mvj_param->total_count[i]);//规划位置  修改P。   第一个参数是规划的当前点  最后一个是计算出到总count
+                    aris::plan::moveAbsolute(static_cast<double>(target.count) * mvj_param.total_count[i] / max_total_count,
+                        mvj_param.begin_pos[i], mvj_param.joint_pos[i],
+                        mvj_param.joint_vel[i] / 1000, mvj_param.joint_acc[i] / 1000 / 1000, mvj_param.joint_dec[i] / 1000 / 1000,
+                        p, v, a, mvj_param.total_count[i]);//规划位置  修改P。   第一个参数是规划的当前点  最后一个是计算出到总count
                     controller->motionAtAbs(i).setTargetPos(p);  //和setMP 有点区别   //电机就动了
                     //target.model->motionPool().at(i).setMp(p);  //模型
                     }
 
+                    //采集信号
+        ///*
+                    int16_t rawData;
+                    double volToSig = 10.0;
+                    //电机下标为at(0,1,2),耦合器下标at(3,4),
+                    //读取PDO，第一参数为index，第二参数为subindex，第三参数读取数据，第四参数为操作位数
+                    //16位精度
+                    for (Size i = 5; i <= 5; ++i)//
+                    {
+                        controller->slavePool().at(i).readPdo(0x6000, 0x11, &rawData, 16);
+                        mvj_param.channel[i - 5][0] = volToSig * rawData / 32767;//2^15-1=32767
+                        controller->slavePool().at(i).readPdo(0x6010, 0x11, &rawData, 16);
+                        mvj_param.channel[i - 5][1] = volToSig * rawData / 32767;
+                        controller->slavePool().at(i).readPdo(0x6020, 0x11, &rawData, 16);
+                        mvj_param.channel[i - 5][2] = volToSig * rawData / 32767;
+                        //controller->slavePool().at(i).readPdo(0x6030, 0x11, &rawData, 16);
+                        //mvj_param->channel[i - 5][3] = volToSig * rawData / 32767;
+                    }
+
+                    // 打印 //
+                    auto &cout = controller->mout();
+                    if (target.count % 100 == 0)
+                    {
+                        //cout << "target_pos" << ":" << param.target_pos << " ";
+                        //cout << "vel" << ":" << param.vel << " ";
+                        //cout << "acc" << ":" << param.acc << " ";
+                        //cout << "dec"  << ":" << param.dec << " ";
+                        ///*
+                        for (Size i = 0; i < 3; ++i)//param.joint_active_vec.size() to 1
+                        {
+
+                                cout << "targetPos" << ":" << controller->motionAtSla(i).targetPos() << " ";
+                                //cout << "actualVel" << ":" << controller->motionAtSla(i).actualVel() << " ";
+                                cout << "actualPos" << ":" << controller->motionAtSla(i).actualPos() << " ";
+                                cout << "TorqueData" << ":" << std::setw(6) << mvj_param.channel[0][i] << "  ";
+
+                        }
+                        cout << std::endl;
+                        //*/
+                        //cout << "----------------------------------------------------" << std::endl;
+                    }
+
+                    // log //
+                    auto &lout = controller->lout();
+                    for (Size i = 0; i < 3; i++)//param.joint_active_vec.size() to 1
+                    {
+                        lout << controller->motionAtSla(i).targetPos() << ",";
+                        lout << controller->motionAtSla(i).actualPos() << ",";
+                       //就这一句有问题 //lout << controller->motionAtSla(i).actualVel() << ",";
+                        lout << controller->motionAtSla(i).actualTor() << ",";
+                    }
+                    for (Size i = 5; i <= 5; ++i)
+                    {
+                        lout << mvj_param.channel[i - 5][0] << ",";
+                        lout << mvj_param.channel[i - 5][1] << ",";
+                        lout << mvj_param.channel[i - 5][2] << ",";
+                        //lout << param.channel[i - 5][3] << ",";
+                    }
+                    lout << std::endl;
+//*/
 
                     return max_total_count == 0 ? 0 : max_total_count - target.count;
                 }
@@ -1717,9 +1782,9 @@ namespace kaanh
                         "<Command name=\"movej3\">"
                         "	<GroupParam>"
                         "		<Param name=\"joint_pos\" abbreviation=\"p\" default=\"{0,0,0}\"/>"
-                        "		<Param name=\"joint_acc\" abbreviation=\"a\" default=\"0.5\"/>"
-                        "		<Param name=\"joint_vel\" abbreviation=\"v\" default=\"0.5\"/>"
-                        "		<Param name=\"joint_dec\" abbreviation=\"d\" default=\"0.5\"/>"
+                        "		<Param name=\"joint_acc\" abbreviation=\"a\" default=\"0.3\"/>"
+                        "		<Param name=\"joint_vel\" abbreviation=\"v\" default=\"0.2\"/>"
+                        "		<Param name=\"joint_dec\" abbreviation=\"d\" default=\"0.3\"/>"
                         "	</GroupParam>"
                         "</Command>");
                 }
