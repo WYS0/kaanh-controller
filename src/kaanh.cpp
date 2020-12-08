@@ -1787,10 +1787,10 @@ namespace kaanh
 	}
 //加&表示改变原变量
 
-	auto fx_Filter_lowpass_2(std::deque<double> &y, std::deque<double> &y_filtered)//y 最近三个采样值 y_filtered 上两个滤波值  返回第三位当前滤波值
+	auto fx_Filter_lowpass_5(std::deque<double> &y, std::deque<double> &y_filtered)//y 最近三个采样值 y_filtered 上两个滤波值  返回第三位当前滤波值
 	{
-		const std::vector<double> a = { 1,-1.98223,0.982385 };
-		const std::vector<double> b = { 3.91302e-5,7.82604e-5,3.91302e-5 };
+		const std::vector<double> a = { 1,-1.97779,0.978031 };
+		const std::vector<double> b = { 6.10062e-05,0.000122012,6.10062e-05 };
 		double filtered_data;
 		filtered_data = b[0] * y[2] + b[1] * y[1] + b[2] * y[0] - a[1] * y_filtered[0] - a[2] * y_filtered[1];
 		y_filtered.push_back(filtered_data);
@@ -1799,9 +1799,9 @@ namespace kaanh
 	//T=A*sin(x)+B
 	auto fx_GravityComp(std::deque<double> pos, std::deque<double> y_filtered)
 	{//线性拟合ax+b
-		const double A = 0.02199930229734086;
-		const double B_up = 0.05154747761213718;
-		const double B_down = -0.038589819217013765;
+		const double A = 0.021557655335173433;
+		const double B_up = 0.02108062562117219;
+		const double B_down = -0.04776382506112764;
 		double angle,torquedata,GC;
 		angle = pos.back() * 180 / PI ;
 		GC = A * sin(angle) * PI / 180.0;
@@ -1815,7 +1815,7 @@ namespace kaanh
 		const double B_up = 0.05154747761213718;
 		const double B_down = -0.038589819217013765;
 		double angle, torquedata, FC;
-		const double K_step = 0.0014, K_step2 = 0.0035;
+		const double K_step = 0.009, K_step2 = 0.004;
 		if (pos.at(2) - pos.at(1) > 0)//连续3个pos,计算速度方向。
 		{ 
 			//当前正向
@@ -2014,7 +2014,7 @@ namespace kaanh
 		if (target.count > 2)
 		{//开始滤波
 			ElbowTorque.push_back(param.channel[0][2]);
-			fx_Filter_lowpass_2(ElbowTorque, ElbowTorque_Filtered);
+			fx_Filter_lowpass_5(ElbowTorque, ElbowTorque_Filtered);
 			ElbowPosition.push_back(param.actual_pos[2]);
 			//此时各个队列都长3
 			ElbowTorque.pop_front();
@@ -2028,8 +2028,11 @@ namespace kaanh
 		//再滤个波？
 		
 			//计算交互力
+
 		//限幅阈值归一化
-			Human_Tor = fx_TorqueNorm(ElbowTorque_GF);//返回0~1因子
+			
+			if (fx_TorqueNorm(ElbowTorque_GF)>0)	Human_Tor = param.channel[0][2]- 2.478331983967936;//扭矩传感器零点
+			else 	Human_Tor = 0;
 			param.target_vel[2] = param.K_vel[2] * Human_Tor * maxstep;//速度值(=K*maxVel)
 		
 
@@ -2055,7 +2058,7 @@ namespace kaanh
 				cout << "targetPos" << ":" << controller->motionAtSla(i).targetPos() << " ";
 				//cout << "actualVel" << ":" << controller->motionAtSla(i).actualVel() << " ";
 				cout << "actualPos" << ":" << controller->motionAtSla(i).actualPos() << " ";
-				cout << "TorqueData" << ":" << std::setw(6) << param.channel[0][i] << "  ";
+				//cout << "TorqueData" << ":" << std::setw(6) << param.channel[0][i] << "  ";
 				cout << "HumanTor" << ":" << std::setw(6) << Human_Tor << "  ";
 			}
 			cout << std::endl;
