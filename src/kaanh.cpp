@@ -1823,7 +1823,7 @@ namespace kaanh
 	
 	}
     int Ks = 0;//摩擦力补偿系数,-1~1缓慢变化
-    double fx_FrictionComp(std::deque<double> &pos, double torque)//输入三个时刻的position,扭矩值，返回摩擦力补偿后的扭矩值
+    double fx_FrictionComp(std::deque<double> &pos, double torque,double FriComp_lsat)//输入三个时刻的position,扭矩值，返回摩擦力补偿后的扭矩值
 	{
         const double B_up = 0.02108;
         const double B_down = -0.04776;
@@ -1901,7 +1901,7 @@ namespace kaanh
 			}
 			else FC = -B_down * Ks;
 		}
-        else FC = Ks * -0.02;
+        else FC = FriComp_lsat- torque;
 		//补偿
 		torquedata = torque + FC;
 		return torquedata;
@@ -1911,7 +1911,7 @@ namespace kaanh
 	std::deque<double> ElbowPosition;
 	struct ElbowTorqueControlParam
 	{
-		std::vector<double> K_vel, actual_pos , target_vel,target_pos;//绝对的角度值。 其他为0-1最大值的百分比
+		std::vector<double> K_vel, actual_pos , target_vel,target_pos,FriComp_lsat;//绝对的角度值。 其他为0-1最大值的百分比
 		int total_time;
 		std::vector<bool> joint_active_vec;
 		std::vector<std::vector<double>> channel;
@@ -1925,7 +1925,7 @@ namespace kaanh
 		ElbowTorque_Filtered.clear();
 		ElbowPosition.clear();
 		Ks = 0;
-
+		FriComp_lsat = 0.0;
 		etc_param.actual_pos.resize(3, 0.0);
 		etc_param.target_pos.resize(3, 0.0);
 		etc_param.target_vel.resize(3, 0.0);
@@ -2045,7 +2045,7 @@ namespace kaanh
 		//重力补偿 
 			ElbowTorque_G = fx_GravityComp(ElbowPosition,ElbowTorque_Filtered);
 		//摩擦力补偿
-			ElbowTorque_GF = fx_FrictionComp(ElbowPosition, ElbowTorque_G);
+			ElbowTorque_GF = fx_FrictionComp(ElbowPosition, ElbowTorque_G, param.FriComp_lsat);
 		//再滤个波？
 		
 			//计算交互力
@@ -2070,6 +2070,8 @@ namespace kaanh
                 controller->motionAtAbs(2).setTargetPos(target_pos);//驱动
 			}
 		}
+		
+		param.FriComp_lsat = ElbowTorque_GF;
 		// 打印 //
 		auto &cout = controller->mout();
         if (target.count % 100 == 0)
@@ -2109,6 +2111,7 @@ namespace kaanh
 		{
 			lout << param.channel[i - 5][2] << ",";
 			lout << ElbowTorque_GF << ",";
+			lout << param.FriComp_lsat << ",";
             lout << Human_Tor << ",";
             lout << Human_Tortemp ;
 		}

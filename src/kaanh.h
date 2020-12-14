@@ -18,7 +18,7 @@ namespace kaanh
     auto createControllerEXO()->std::unique_ptr<aris::control::Controller>;
 	auto createModelRokae()->std::unique_ptr<aris::dynamic::Model>;
 	auto createPlanRootRokaeXB4()->std::unique_ptr<aris::plan::PlanRoot>;
-	auto fx_FrictionComp(std::deque<double> &pos, double torque);
+	auto fx_FrictionComp(std::deque<double> &pos, double torque, double FriComp_lsat);
 	auto fx_GravityComp(std::deque<double> pos, std::deque<double> y_filtered);
 
 	class moveJ_Cos : public aris::plan::Plan
