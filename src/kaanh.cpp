@@ -1,6 +1,5 @@
 ﻿#include <algorithm>
 #include"kaanh.h"
-#include <deque>
 
 using namespace aris::dynamic;
 using namespace aris::plan;
@@ -40,7 +39,7 @@ namespace kaanh
 			};
             double min_pos[6]
 			{
-                -0.0 / 30 * 2 * PI, -5.0 / 36 * 2 * PI, -5.0/ 36 * 2 * PI, -17.0 / 360 * 2 * PI, -11.0 / 360 * 2 * PI, -36.0 / 360 * 2 * PI
+                -1.0 / 30 * 2 * PI, -5.0 / 36 * 2 * PI, -5.0/ 36 * 2 * PI, -17.0 / 360 * 2 * PI, -11.0 / 360 * 2 * PI, -36.0 / 360 * 2 * PI
 			};
             double max_vel[6]
 			{
@@ -48,7 +47,7 @@ namespace kaanh
 			};
             double max_acc[6]
 			{
-                500.0 / 360 * 2 * PI, 500.0 / 360 * 2 * PI, 500.0 / 360 * 2 * PI, 1750.0 / 360 * 2 * PI, 1500.0 / 360 * 2 * PI, 2500.0 / 360 * 2 * PI,
+                4000.0 / 360 * 2 * PI, 4000.0 / 360 * 2 * PI, 19000.0 / 360 * 2 * PI, 1750.0 / 360 * 2 * PI, 1500.0 / 360 * 2 * PI, 2500.0 / 360 * 2 * PI,
 			};
 
 			std::string xml_str =
@@ -1011,16 +1010,12 @@ namespace kaanh
         target.option |=
             Plan::USE_TARGET_POS |
 #ifdef WIN32
-            Plan::NOT_CHECK_POS_MIN |
-            Plan::NOT_CHECK_POS_MAX |
             Plan::NOT_CHECK_POS_CONTINUOUS |
             Plan::NOT_CHECK_POS_CONTINUOUS_AT_START |
             Plan::NOT_CHECK_POS_CONTINUOUS_SECOND_ORDER |
             Plan::NOT_CHECK_POS_CONTINUOUS_SECOND_ORDER_AT_START |
             Plan::NOT_CHECK_POS_FOLLOWING_ERROR |
 #endif
-            Plan::NOT_CHECK_VEL_MIN |
-            Plan::NOT_CHECK_VEL_MAX |
             Plan::NOT_CHECK_VEL_CONTINUOUS |
             Plan::NOT_CHECK_VEL_CONTINUOUS_AT_START |
             Plan::NOT_CHECK_POS_CONTINUOUS_AT_START |
@@ -1772,36 +1767,54 @@ namespace kaanh
             "</Command>");
     }
 
+    double  TorSensor2Offset = 2.48;
 	auto fx_TorqueNorm(double x)
 	{
-		const double threshold = 0.015;
-		const double peak = 0.8;
-		const double offset = 2.478331983967936;
-		x -= offset;
+        const double threshold = 0.02;
+        //const double peak = 0.2;
+        x -= TorSensor2Offset;
 		if (std::fabs(x) < threshold)
 			x = 0;
-		else if (std::fabs(x) > peak)
-			x = 0.8;
-		x = x / 0.8;//归一化
+        //else if (std::fabs(x) > peak)
+        //    x = peak;
+        //x = x / peak;//归一化
 		return x;
 	}
 //加&表示改变原变量
+    double fx_EnhanceData(double x)
+    {
+        const double threshold = 0.02*4;
+        if ( x > 0 )  //去阈值
+        {
+            x -= threshold;
+            if( x < 0 )
+                x = 0;
+        }
+        else if( x < 0 )
+        {
+            x += 0.2 * threshold;
+            if (x >0)
+            x = 0;
+        }
+        x /= threshold;//归一化
+        x = x * std::fabs(x);//自平方
+        return x;
+    }
+
 
 	auto fx_Filter_lowpass_5(std::deque<double> &y, std::deque<double> &y_filtered)//y 最近三个采样值 y_filtered 上两个滤波值  返回第三位当前滤波值
 	{
 		const std::vector<double> a = { 1,-1.97779,0.978031 };
 		const std::vector<double> b = { 6.10062e-05,0.000122012,6.10062e-05 };
 		double filtered_data;
-		filtered_data = b[0] * y[2] + b[1] * y[1] + b[2] * y[0] - a[1] * y_filtered[0] - a[2] * y_filtered[1];
+        filtered_data = b[0] * y[2] + b[1] * y[1] + b[2] * y[0] - a[1] * y_filtered[1] - a[2] * y_filtered[0];
 		y_filtered.push_back(filtered_data);
 
 	}
 	//T=A*sin(x)+B
-	auto fx_GravityComp(std::deque<double> pos, std::deque<double> y_filtered)
+    double fx_GravityComp(std::deque<double> pos, std::deque<double> y_filtered)
 	{//线性拟合ax+b
-		const double A = 0.021557655335173433;
-		const double B_up = 0.02108062562117219;
-		const double B_down = -0.04776382506112764;
+        const double A = 0.02155764;
 		double angle,torquedata,GC;
 		angle = pos.back() * 180 / PI ;
 		GC = A * sin(angle) * PI / 180.0;
@@ -1809,11 +1822,11 @@ namespace kaanh
 		return torquedata;
 	
 	}
-	int Ks = 0;//摩擦力补偿系数,-1~1缓慢变化
-	auto fx_FrictionComp(std::deque<double> &pos, double torque)//输入三个时刻的position,扭矩值，返回摩擦力补偿后的扭矩值
+    int Ks = 0;//摩擦力补偿系数,-1~1缓慢变化
+    double fx_FrictionComp(std::deque<double> &pos, double torque)//输入三个时刻的position,扭矩值，返回摩擦力补偿后的扭矩值
 	{
-		const double B_up = 0.05154747761213718;
-		const double B_down = -0.038589819217013765;
+        const double B_up = 0.02108;
+        const double B_down = -0.04776;
 		double angle, torquedata, FC;
 		const double K_step = 0.009, K_step2 = 0.004;
 		if (pos.at(2) - pos.at(1) > 0)//连续3个pos,计算速度方向。
@@ -1888,7 +1901,7 @@ namespace kaanh
 			}
 			else FC = -B_down * Ks;
 		}
-		else FC = Ks * 0.044;
+        else FC = Ks * -0.02;
 		//补偿
 		torquedata = torque + FC;
 		return torquedata;
@@ -1923,12 +1936,12 @@ namespace kaanh
 		{
 			etc_param.joint_active_vec.at(i) = false;
 		}
-		etc_param.joint_active_vec.at(3) = true;
+        etc_param.joint_active_vec.at(2) = true;
 		// find joint vel/time
 		for (auto cmd_param : params)
 		{
 			auto c = target.controller;
-			if (cmd_param.first == "joint_vel")
+            if (cmd_param.first == "K_vel")
 			{
 
 				auto vel_mat = target.model->calculator().calculateExpression(cmd_param.second);
@@ -1936,11 +1949,12 @@ namespace kaanh
 				else if (vel_mat.size() == 3) std::copy(vel_mat.begin(), vel_mat.end(), etc_param.K_vel.begin());
 				else THROW_FILE_AND_LINE("");
 
-				for (int i = 0; i < 3; ++i)etc_param.K_vel[i] *= target.controller->motionPool()[i].maxVel();
+                //for (int i = 0; i < 3; ++i) etc_param.K_vel[i] *= target.controller->motionPool()[i].maxVel();
 
 				// check value validity //
 				for (Size i = 0; i < 3; ++i)
-					if (etc_param.K_vel[i] <= 0 || etc_param.K_vel[i] > c->motionPool()[i].maxVel())
+                    //if (etc_param.K_vel[i] <= 0 || etc_param.K_vel[i] > c->motionPool()[i].maxVel())
+                    if (etc_param.K_vel[i] <= 0 || etc_param.K_vel[i] > 1)
 						THROW_FILE_AND_LINE("");
 			}
 			else if (cmd_param.first == "total_time")
@@ -1959,13 +1973,19 @@ namespace kaanh
 		//原来没注释
 							//std::vector<std::pair<std::string, std::any>> ret_value;
 							//target.ret = ret_value;
+        target.option |=
+        Plan::USE_TARGET_POS |
+        Plan::NOT_CHECK_VEL_CONTINUOUS|
+        Plan::NOT_CHECK_VEL_CONTINUOUS_AT_START ;
+
+//
 	}
 	auto ElbowTorqueControl::executeRT(PlanTarget &target)->int
 	{
 		auto &param = std::any_cast<ElbowTorqueControlParam&>(target.param);
 		auto controller = dynamic_cast<aris::control::EthercatController*>(target.controller);
-		const double maxstep = 1 / 5000;//最大步长
-
+        const double maxstep = 1 / 250.0;//最大步长
+        double Human_Tortemp = 0.0;
 		//电机扭矩使能初始化
 		if (target.count == 1)
 		{
@@ -1973,7 +1993,7 @@ namespace kaanh
 			for (Size i = 2; i < 3; ++i)//param.joint_active_vec.size() to 1
 			{								//setting elmo driver max. torque
 				auto &ec_mot = static_cast<aris::control::EthercatMotion&>(controller->motionAtPhy(i));
-				ec_mot.writePdo(0x6072, 0x00, std::int16_t(1000));//原始1000
+                ec_mot.writePdo(0x6072, 0x00, std::int16_t(2000));//原始1000
 			}
 		}
 
@@ -2008,11 +2028,12 @@ namespace kaanh
 			ElbowPosition.push_back(param.actual_pos[2]);
 		}
 
-		double ElbowTorque_G = 0.0;
-		double ElbowTorque_GF = 0.0;
-		double Human_Tor = 0.0;
+        double ElbowTorque_G = TorSensor2Offset;
+        double ElbowTorque_GF = TorSensor2Offset;
+        double Human_Tor = 0.0;
+        //开始滤波
 		if (target.count > 2)
-		{//开始滤波
+        {
 			ElbowTorque.push_back(param.channel[0][2]);
 			fx_Filter_lowpass_5(ElbowTorque, ElbowTorque_Filtered);
 			ElbowPosition.push_back(param.actual_pos[2]);
@@ -2030,23 +2051,28 @@ namespace kaanh
 			//计算交互力
 
 		//限幅阈值归一化
-			
-			if (fx_TorqueNorm(ElbowTorque_GF)>0)	Human_Tor = param.channel[0][2]- 2.478331983967936;//扭矩传感器零点
-			else 	Human_Tor = 0;
-			param.target_vel[2] = param.K_vel[2] * Human_Tor * maxstep;//速度值(=K*maxVel)
-		
+            Human_Tor = 0.0;
 
-		double target_pos;
+            param.target_vel[2]=0.0;
+            if (fx_TorqueNorm(ElbowTorque_GF)!=0.0)//大于阈值
+            {
+                Human_Tortemp = (ElbowTorque_Filtered.back()- 2.5)/0.2;//交互力
+                Human_Tor = fx_EnhanceData(Human_Tortemp);
+            }
+            param.target_vel[2] = param.K_vel[2] * Human_Tor * maxstep;//速度值(=K*maxVel)
+
+
+        double target_pos=param.actual_pos[2];
 		// 目标位置 //
 			for (Size i = 2; i < 3; ++i)//param.joint_active_vec.size() to 1
 			{			
-				target_pos = param.actual_pos[i] + param.target_vel[i];
-				controller->motionAtAbs(i).setTargetPos(target_pos);//驱动
+                target_pos = param.actual_pos[2] + param.target_vel[2];
+                controller->motionAtAbs(2).setTargetPos(target_pos);//驱动
 			}
 		}
 		// 打印 //
 		auto &cout = controller->mout();
-		if (target.count % 100 == 0)
+        if (target.count % 100 == 0)
 		{
 			//cout << "target_pos" << ":" << param.target_pos << " ";
 			//cout << "vel" << ":" << param.vel << " ";
@@ -2055,11 +2081,15 @@ namespace kaanh
 			///*
 			for (Size i = 2; i < 3; ++i)//param.joint_active_vec.size() to 1
 			{
-				cout << "targetPos" << ":" << controller->motionAtSla(i).targetPos() << " ";
+
 				//cout << "actualVel" << ":" << controller->motionAtSla(i).actualVel() << " ";
-				cout << "actualPos" << ":" << controller->motionAtSla(i).actualPos() << " ";
+                cout << "actualPos" << ":" << controller->motionAtSla(i).actualPos() << " ";
+                cout << "incPos" << ":" << param.target_vel[2] << " ";
 				//cout << "TorqueData" << ":" << std::setw(6) << param.channel[0][i] << "  ";
-				cout << "HumanTor" << ":" << std::setw(6) << Human_Tor << "  ";
+                cout << "ElbowTorque_Filtered" << ":" << std::setw(4) << ElbowTorque_Filtered.back() << "  ";
+                cout << "SensorTor" << ":" << std::setw(4) << param.channel[0][2];
+                cout << "HumanTor" << ":" << std::setw(4) << Human_Tor;
+                cout << "Human_Tortemp" << ":" << std::setw(4) <<  Human_Tortemp;
 			}
 			cout << std::endl;
 			//cout << "----------------------------------------------------" << std::endl;
@@ -2069,16 +2099,18 @@ namespace kaanh
 		auto &lout = controller->lout();
 		for (Size i = 2; i < 3; i++)//param.joint_active_vec.size() to 1
 		{
-			lout << controller->motionAtSla(i).targetPos() << ",";
+            //lout << controller->motionAtSla(i).targetPos() << ",";
 			lout << controller->motionAtSla(i).actualPos() << ",";
+            lout << param.target_vel[2] << ",";
 			//就这一句有问题 //lout << controller->motionAtSla(i).actualVel() << ",";
-			lout << controller->motionAtSla(i).actualTor() << ",";
+            //lout << controller->motionAtSla(i).actualTor() << ",";
 		}
 		for (Size i = 5; i <= 5; ++i)
 		{
 			lout << param.channel[i - 5][2] << ",";
 			lout << ElbowTorque_GF << ",";
-			lout << Human_Tor ;
+            lout << Human_Tor << ",";
+            lout << Human_Tortemp ;
 		}
 		lout << std::endl;
 		return param.total_time - target.count;
@@ -2089,8 +2121,74 @@ namespace kaanh
 		command().loadXmlStr(
 			"<Command name=\"etc\">"
 			"	<GroupParam>"
-			"		<Param name=\"K_vel\" abbreviation=\"v\" default=\"0.2\"/>"
-			"		<Param name=\"total_time\" abbreviation=\"t\" default=\"5000\"/>"
+            "		<Param name=\"K_vel\" abbreviation=\"v\" default=\"1\"/>"
+            "		<Param name=\"total_time\" abbreviation=\"t\" default=\"20000\"/>"
+            "		<UniqueParam default=\"check_none\">"
+            "			<Param name=\"check_all\"/>"
+            "			<Param name=\"check_none\"/>"
+            "			<GroupParam>"
+            "				<UniqueParam default=\"check_pos\">"
+            "					<Param name=\"check_pos\"/>"
+            "					<Param name=\"not_check_pos\"/>"
+            "					<GroupParam>"
+            "						<UniqueParam default=\"check_pos_max\">"
+            "							<Param name=\"check_pos_max\"/>"
+            "							<Param name=\"not_check_pos_max\"/>"
+            "						</UniqueParam>"
+            "						<UniqueParam default=\"check_pos_min\">"
+            "							<Param name=\"check_pos_min\"/>"
+            "							<Param name=\"not_check_pos_min\"/>"
+            "						</UniqueParam>"
+            "						<UniqueParam default=\"check_pos_continuous\">"
+            "							<Param name=\"check_pos_continuous\"/>"
+            "							<Param name=\"not_check_pos_continuous\"/>"
+            "						</UniqueParam>"
+            "						<UniqueParam default=\"check_pos_continuous_at_start\">"
+            "							<Param name=\"check_pos_continuous_at_start\"/>"
+            "							<Param name=\"not_check_pos_continuous_at_start\"/>"
+            "						</UniqueParam>"
+            "						<UniqueParam default=\"check_pos_continuous_second_order\">"
+            "							<Param name=\"check_pos_continuous_second_order\"/>"
+            "							<Param name=\"not_check_pos_continuous_second_order\"/>"
+            "						</UniqueParam>"
+            "						<UniqueParam default=\"check_pos_continuous_second_order_at_start\">"
+            "							<Param name=\"check_pos_continuous_second_order_at_start\"/>"
+            "							<Param name=\"not_check_pos_continuous_second_order_at_start\"/>"
+            "						</UniqueParam>"
+            "						<UniqueParam default=\"check_pos_following_error\">"
+            "							<Param name=\"check_pos_following_error\"/>"
+            "							<Param name=\"not_check_pos_following_error\"/>"
+            "						</UniqueParam>"
+            "					</GroupParam>"
+            "				</UniqueParam>"
+            "				<UniqueParam default=\"check_vel\">"
+            "					<Param name=\"check_vel\"/>"
+            "					<Param name=\"not_check_vel\"/>"
+            "					<GroupParam>"
+            "						<UniqueParam default=\"check_vel_max\">"
+            "							<Param name=\"check_vel_max\"/>"
+            "							<Param name=\"not_check_vel_max\"/>"
+            "						</UniqueParam>"
+            "						<UniqueParam default=\"check_vel_min\">"
+            "							<Param name=\"check_vel_min\"/>"
+            "							<Param name=\"not_check_vel_min\"/>"
+            "						</UniqueParam>"
+            "						<UniqueParam default=\"check_vel_continuous\">"
+            "							<Param name=\"check_vel_continuous\"/>"
+            "							<Param name=\"not_check_vel_continuous\"/>"
+            "						</UniqueParam>"
+            "						<UniqueParam default=\"check_vel_continuous_at_start\">"
+            "							<Param name=\"check_vel_continuous_at_start\"/>"
+            "							<Param name=\"not_check_vel_continuous_at_start\"/>"
+            "						</UniqueParam>"
+            "						<UniqueParam default=\"check_vel_following_error\">"
+            "							<Param name=\"check_vel_following_error\"/>"
+            "							<Param name=\"not_check_vel_following_error\"/>"
+            "						</UniqueParam>"
+            "					</GroupParam>"
+            "				</UniqueParam>"
+            "			</GroupParam>"
+            "		</UniqueParam>"
 			"	</GroupParam>"
 			"</Command>");
 	}
