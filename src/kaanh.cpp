@@ -1,5 +1,5 @@
 ﻿#include <algorithm>
-#include"kaanh.h"
+#include "kaanh.h"
 
 using namespace aris::dynamic;
 using namespace aris::plan;
@@ -47,7 +47,7 @@ namespace kaanh
 			};
             double max_acc[6]
 			{
-                4000.0 / 360 * 2 * PI, 4000.0 / 360 * 2 * PI, 19000.0 / 360 * 2 * PI, 1750.0 / 360 * 2 * PI, 1500.0 / 360 * 2 * PI, 2500.0 / 360 * 2 * PI,
+                4000.0 / 360 * 2 * PI, 4000.0 / 360 * 2 * PI, 50000.0 / 360 * 2 * PI, 1750.0 / 360 * 2 * PI, 1500.0 / 360 * 2 * PI, 2500.0 / 360 * 2 * PI,
 			};
 
 			std::string xml_str =
@@ -1767,14 +1767,16 @@ namespace kaanh
             "</Command>");
     }
 
-    double  TorSensor2Offset = 2.48;
+    double  TorSensor2Offset = 2.5;
 	auto fx_TorqueNorm(double x)
 	{
-        const double threshold = 0.02;
+        const double threshold = 0.025;
         //const double peak = 0.2;
         x -= TorSensor2Offset;
-		if (std::fabs(x) < threshold)
+        if ((x>0)&&(x< threshold))
 			x = 0;
+        if ((x<0)&&(x> -0.4*threshold))
+            x = 0;
         //else if (std::fabs(x) > peak)
         //    x = peak;
         //x = x / peak;//归一化
@@ -1786,23 +1788,24 @@ namespace kaanh
         const double threshold = 0.02*4;
         if ( x > 0 )  //去阈值
         {
-            x -= threshold;
+            x -= 1.6*threshold;
             if( x < 0 )
                 x = 0;
         }
         else if( x < 0 )
         {
-            x += 0.2 * threshold;
+            x += 0.6 * threshold;
             if (x >0)
             x = 0;
         }
         x /= threshold;//归一化
+        if (x<0) x*=1.0;
         x = x * std::fabs(x);//自平方
-        return x;
+        return x*0.8;
     }
 
 
-	auto fx_Filter_lowpass_5(std::deque<double> &y, std::deque<double> &y_filtered)//y 最近三个采样值 y_filtered 上两个滤波值  返回第三位当前滤波值
+    auto fx_Filter_lowpass_5(std::deque<double> &y, std::deque<double> &y_filtered)//y 最近三个采样值 y_filtered 上两个滤波值  返回第三位当前滤波值
 	{
 		const std::vector<double> a = { 1,-1.97779,0.978031 };
 		const std::vector<double> b = { 6.10062e-05,0.000122012,6.10062e-05 };
@@ -1822,13 +1825,13 @@ namespace kaanh
 		return torquedata;
 	
 	}
-    int Ks = 0;//摩擦力补偿系数,-1~1缓慢变化
-    double fx_FrictionComp(std::deque<double> &pos, double torque,double FriComp_lsat)//输入三个时刻的position,扭矩值，返回摩擦力补偿后的扭矩值
+    double Ks = 0;//摩擦力补偿系数,-1~1缓慢变化
+    double fx_FrictionComp(std::deque<double> pos, double torque,double FriComp_lsat)//输入三个时刻的position,扭矩值，返回摩擦力补偿后的扭矩值
 	{
-        const double B_up = 0.02108;
-        const double B_down = -0.04776;
-		double angle, torquedata, FC;
-		const double K_step = 0.009, K_step2 = 0.004;
+        const double B_up = 0.021;
+        const double B_down = -0.041;//-0.041
+        double  torquedata, FC;
+        const double K_step = 0.02, K_step2 = 0.020;//09 04
 		if (pos.at(2) - pos.at(1) > 0)//连续3个pos,计算速度方向。
 		{ 
 			//当前正向
@@ -1879,7 +1882,7 @@ namespace kaanh
 				else 
 				{
 					Ks -= K_step;
-					if (Ks <= -1)	Ks = -1;
+                    if (Ks <= -1)	Ks = -1;
 					FC = -B_down * Ks;
 				}
 			}
@@ -1894,14 +1897,14 @@ namespace kaanh
 				else 
 				{
 					Ks -= K_step;
-					if (Ks <= 1)	Ks = -1;
+                    if (Ks <= -1)	Ks = -1;
 					FC = -B_down * Ks;				
 				}
 			
 			}
 			else FC = -B_down * Ks;
 		}
-        else FC = FriComp_lsat- torque;
+        else FC = FriComp_lsat;
 		//补偿
 		torquedata = torque + FC;
 		return torquedata;
@@ -1911,8 +1914,9 @@ namespace kaanh
 	std::deque<double> ElbowPosition;
 	struct ElbowTorqueControlParam
 	{
-		std::vector<double> K_vel, actual_pos , target_vel,target_pos,FriComp_lsat;//绝对的角度值。 其他为0-1最大值的百分比
+        std::vector<double> K_vel, actual_pos , target_vel,target_pos;//绝对的角度值。 其他为0-1最大值的百分比
 		int total_time;
+        double FriComp_lsat,Vel_last;
 		std::vector<bool> joint_active_vec;
 		std::vector<std::vector<double>> channel;
 
@@ -1925,7 +1929,8 @@ namespace kaanh
 		ElbowTorque_Filtered.clear();
 		ElbowPosition.clear();
 		Ks = 0;
-		FriComp_lsat = 0.0;
+        etc_param.Vel_last=0;
+        etc_param.FriComp_lsat = 0.0;
 		etc_param.actual_pos.resize(3, 0.0);
 		etc_param.target_pos.resize(3, 0.0);
 		etc_param.target_vel.resize(3, 0.0);
@@ -1976,15 +1981,20 @@ namespace kaanh
         target.option |=
         Plan::USE_TARGET_POS |
         Plan::NOT_CHECK_VEL_CONTINUOUS|
-        Plan::NOT_CHECK_VEL_CONTINUOUS_AT_START ;
+        Plan::NOT_CHECK_VEL_CONTINUOUS_AT_START |
+      //          Plan::NOT_CHECK_POS_CONTINUOUS |
+        //        Plan::NOT_CHECK_POS_CONTINUOUS_AT_START |
+          //      Plan::NOT_CHECK_POS_CONTINUOUS_SECOND_ORDER |
+            //    Plan::NOT_CHECK_POS_CONTINUOUS_SECOND_ORDER_AT_START |
+              //  Plan::NOT_CHECK_POS_FOLLOWING_ERROR |
+        Plan::NOT_CHECK_VEL_FOLLOWING_ERROR;
 
-//
 	}
 	auto ElbowTorqueControl::executeRT(PlanTarget &target)->int
 	{
 		auto &param = std::any_cast<ElbowTorqueControlParam&>(target.param);
 		auto controller = dynamic_cast<aris::control::EthercatController*>(target.controller);
-        const double maxstep = 1 / 250.0;//最大步长
+        const double maxstep = 1 / 1100.0;//最大步长
         double Human_Tortemp = 0.0;
 		//电机扭矩使能初始化
 		if (target.count == 1)
@@ -1993,7 +2003,7 @@ namespace kaanh
 			for (Size i = 2; i < 3; ++i)//param.joint_active_vec.size() to 1
 			{								//setting elmo driver max. torque
 				auto &ec_mot = static_cast<aris::control::EthercatMotion&>(controller->motionAtPhy(i));
-                ec_mot.writePdo(0x6072, 0x00, std::int16_t(2000));//原始1000
+                ec_mot.writePdo(0x6072, 0x00, std::int16_t(5000));//原始1000
 			}
 		}
 
@@ -2026,6 +2036,7 @@ namespace kaanh
 			ElbowTorque.push_back(param.channel[0][2]);
 			ElbowTorque_Filtered.push_back(param.channel[0][2]);
 			ElbowPosition.push_back(param.actual_pos[2]);
+
 		}
 
         double ElbowTorque_G = TorSensor2Offset;
@@ -2040,7 +2051,7 @@ namespace kaanh
 			//此时各个队列都长3
 			ElbowTorque.pop_front();
 			ElbowTorque_Filtered.pop_front();
-			//都长2 访问ElbowTorque_Filtered.at(1)得到当前扭矩
+            //长2 访问ElbowTorque_Filtered.at(1)得到当前扭矩
 
 		//重力补偿 
 			ElbowTorque_G = fx_GravityComp(ElbowPosition,ElbowTorque_Filtered);
@@ -2056,22 +2067,34 @@ namespace kaanh
             param.target_vel[2]=0.0;
             if (fx_TorqueNorm(ElbowTorque_GF)!=0.0)//大于阈值
             {
-                Human_Tortemp = (ElbowTorque_Filtered.back()- 2.5)/0.2;//交互力
+                Human_Tortemp = (ElbowTorque_GF- 2.50)/0.2;//交互力
                 Human_Tor = fx_EnhanceData(Human_Tortemp);
             }
-            param.target_vel[2] = param.K_vel[2] * Human_Tor * maxstep;//速度值(=K*maxVel)
 
+            param.target_vel[2] = param.K_vel[2] * Human_Tor * maxstep;//速度值(=K*maxVel)
+            //限制步长  根据上一个位置增量（速度
+            if (param.target_vel[2]-param.Vel_last>0.0007)
+                param.target_vel[2]=param.Vel_last+0.0007;
+            if (param.target_vel[2]-param.Vel_last<-0.0007)
+                param.target_vel[2]=param.Vel_last-0.0007;
 
         double target_pos=param.actual_pos[2];
 		// 目标位置 //
 			for (Size i = 2; i < 3; ++i)//param.joint_active_vec.size() to 1
 			{			
-                target_pos = param.actual_pos[2] + param.target_vel[2];
+                target_pos = ElbowPosition.at(1) + param.target_vel[2];//上一时刻位置+增量
                 controller->motionAtAbs(2).setTargetPos(target_pos);//驱动
 			}
-		}
-		
-		param.FriComp_lsat = ElbowTorque_GF;
+
+
+            param.Vel_last=param.target_vel[2];
+            param.FriComp_lsat = ElbowTorque_GF-ElbowTorque_G;
+            //注释
+            //ElbowPosition.pop_back();
+            //ElbowPosition.push_back(target_pos);//更新当前位置
+            ElbowPosition.pop_front();//队长为2
+        }
+
 		// 打印 //
 		auto &cout = controller->mout();
         if (target.count % 100 == 0)
@@ -2088,7 +2111,7 @@ namespace kaanh
                 cout << "actualPos" << ":" << controller->motionAtSla(i).actualPos() << " ";
                 cout << "incPos" << ":" << param.target_vel[2] << " ";
 				//cout << "TorqueData" << ":" << std::setw(6) << param.channel[0][i] << "  ";
-                cout << "ElbowTorque_Filtered" << ":" << std::setw(4) << ElbowTorque_Filtered.back() << "  ";
+                cout << "ElbowTorque_GF" << ":" << std::setw(4) << ElbowTorque_GF << "  ";
                 cout << "SensorTor" << ":" << std::setw(4) << param.channel[0][2];
                 cout << "HumanTor" << ":" << std::setw(4) << Human_Tor;
                 cout << "Human_Tortemp" << ":" << std::setw(4) <<  Human_Tortemp;
@@ -2109,10 +2132,15 @@ namespace kaanh
 		}
 		for (Size i = 5; i <= 5; ++i)
 		{
-			lout << param.channel[i - 5][2] << ",";
-			lout << ElbowTorque_GF << ",";
-			lout << param.FriComp_lsat << ",";
-            lout << Human_Tor << ",";
+            lout << param.channel[i - 5][2] << ",    ";
+
+            lout << ElbowTorque_G << ",    " ;
+            lout << ElbowTorque_GF << ",    ";
+            lout << ElbowTorque_Filtered.back() << ",    ";
+            lout << ElbowPosition.back() << ",    ";
+            lout << param.FriComp_lsat << ",    ";
+            lout << Ks << ",    ";
+            lout << Human_Tor << ",    ";
             lout << Human_Tortemp ;
 		}
 		lout << std::endl;
@@ -2125,7 +2153,7 @@ namespace kaanh
 			"<Command name=\"etc\">"
 			"	<GroupParam>"
             "		<Param name=\"K_vel\" abbreviation=\"v\" default=\"1\"/>"
-            "		<Param name=\"total_time\" abbreviation=\"t\" default=\"20000\"/>"
+            "		<Param name=\"total_time\" abbreviation=\"t\" default=\"30000\"/>"
             "		<UniqueParam default=\"check_none\">"
             "			<Param name=\"check_all\"/>"
             "			<Param name=\"check_none\"/>"
