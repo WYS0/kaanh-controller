@@ -4,7 +4,7 @@
 
 #include <memory>
 #include <aris.hpp>
-#include<deque>
+#include <deque>
 
 // \brief 机器人命名空间
 // \ingroup aris
@@ -18,9 +18,9 @@ namespace kaanh
     auto createControllerEXO()->std::unique_ptr<aris::control::Controller>;
 	auto createModelRokae()->std::unique_ptr<aris::dynamic::Model>;
 	auto createPlanRootRokaeXB4()->std::unique_ptr<aris::plan::PlanRoot>;
-    double fx_FrictionComp(std::deque<double> pos, double torque,double FriComp_lsat);
-    double fx_GravityComp(std::deque<double> pos, std::deque<double> y_filtered);
-    auto fx_Filter_lowpass_5(std::deque<double> y, std::deque<double> &y_filtered);
+	double fx_FrictionComp(std::deque<double> pos, double torque, double FriComp_lsat);
+	double fx_GravityComp(std::deque<double> pos, std::deque<double> y_filtered);
+	double fx_AccComp(double ElbowTorque_GF, double ElbowAcc_Filtered);
 	class moveJ_Cos : public aris::plan::Plan
 	{
 	public:
